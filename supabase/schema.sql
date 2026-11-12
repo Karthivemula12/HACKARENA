@@ -141,7 +141,9 @@ create policy "Admins manage events" on public.events for all to authenticated u
 drop policy if exists "Players see their registrations" on public.registrations;
 create policy "Players see their registrations" on public.registrations for select to authenticated using (user_id = auth.uid() or public.is_hackarena_admin());
 drop policy if exists "Players register themselves" on public.registrations;
-create policy "Players register themselves" on public.registrations for insert to authenticated with check (user_id = auth.uid());
+create policy "Players register themselves" on public.registrations for insert to authenticated with check (
+  user_id = auth.uid() and exists(select 1 from public.events e where e.id = event_id and e.status = 'open')
+);
 drop policy if exists "Players cancel own registrations" on public.registrations;
 create policy "Players cancel own registrations" on public.registrations for delete to authenticated using (user_id = auth.uid() or public.is_hackarena_admin());
 
@@ -173,7 +175,8 @@ create policy "Project visibility for submitter team and admins" on public.proje
 );
 drop policy if exists "Players submit their own projects" on public.projects;
 create policy "Players submit their own projects" on public.projects for insert to authenticated with check (
-  user_id = auth.uid() and (team_id is null or exists(select 1 from public.team_members tm where tm.team_id = team_id and tm.user_id = auth.uid()))
+  user_id = auth.uid() and exists(select 1 from public.events e where e.id = event_id and e.event_type = 'hackathon' and e.status = 'open')
+  and (team_id is null or exists(select 1 from public.team_members tm where tm.team_id = team_id and tm.user_id = auth.uid()))
 );
 drop policy if exists "Submitters update own projects admins review" on public.projects;
 create policy "Submitters update own projects admins review" on public.projects for update to authenticated using (user_id = auth.uid() or public.is_hackarena_admin()) with check (user_id = auth.uid() or public.is_hackarena_admin());
@@ -183,7 +186,10 @@ create policy "Scores visible to signed-in players" on public.game_scores for se
 drop policy if exists "Players submit their own scores" on public.game_scores;
 create policy "Players submit their own scores" on public.game_scores for insert to authenticated with check (user_id = auth.uid());
 
--- Least-privilege API access. Never put a Supabase secret/service-role key in the browser.
+-- Least-privilege API access. Revoke default table grants first, then grant only what the app needs.
+-- Never put a Supabase secret/service-role key in the browser.
+revoke all on public.profiles, public.events, public.registrations, public.teams,
+  public.team_members, public.projects, public.game_scores from anon, authenticated;
 grant select on public.events to anon, authenticated;
 grant select on public.profiles, public.teams, public.team_members, public.game_scores to authenticated;
 grant update(display_name) on public.profiles to authenticated;
@@ -192,6 +198,7 @@ grant insert,update,delete on public.teams to authenticated;
 grant insert,delete on public.team_members to authenticated;
 grant select,insert,update on public.projects to authenticated;
 grant insert on public.game_scores to authenticated;
+grant insert,update,delete on public.events to authenticated;
 grant execute on function public.is_hackarena_admin() to authenticated;
 
 insert into public.events(title,description,event_type,format,theme,status)
