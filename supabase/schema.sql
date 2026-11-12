@@ -102,6 +102,20 @@ drop trigger if exists on_hackarena_team_created on public.teams;
 create trigger on_hackarena_team_created after insert on public.teams
 for each row execute procedure public.handle_new_hackarena_team();
 
+create or replace function public.admin_update_project_status(p_project_id uuid, p_status text)
+returns void language plpgsql security definer set search_path = public
+as $
+begin
+  if not public.is_hackarena_admin() then
+    raise exception 'Only HACKARENA admins can review projects';
+  end if;
+  if p_status not in ('submitted','reviewing','shortlisted','winner') then
+    raise exception 'Invalid project status';
+  end if;
+  update public.projects set status = p_status where id = p_project_id;
+end;
+$;
+
 create or replace function public.award_hackarena_game_xp()
 returns trigger language plpgsql security definer set search_path = public
 as $$
@@ -200,6 +214,7 @@ grant select,insert,update on public.projects to authenticated;
 grant insert on public.game_scores to authenticated;
 grant insert,update,delete on public.events to authenticated;
 grant execute on function public.is_hackarena_admin() to authenticated;
+grant execute on function public.admin_update_project_status(uuid,text) to authenticated;
 
 insert into public.events(title,description,event_type,format,theme,status)
 select v.title,v.description,v.event_type,v.format,v.theme,'open'
