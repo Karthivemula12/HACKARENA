@@ -210,9 +210,13 @@ grant update(display_name) on public.profiles to authenticated;
 grant select,insert,delete on public.registrations to authenticated;
 grant insert,update,delete on public.teams to authenticated;
 grant insert,delete on public.team_members to authenticated;
-grant select,insert,update on public.projects to authenticated;
-grant insert on public.game_scores to authenticated;
+grant select on public.projects to authenticated;
+grant insert(event_id,user_id,team_id,title,description,repo_url) on public.projects to authenticated;
+grant update(title,description,team_id,repo_url) on public.projects to authenticated;
+grant insert(user_id,game_code,score) on public.game_scores to authenticated;
 grant insert,update,delete on public.events to authenticated;
+revoke all on function public.is_hackarena_admin() from public, anon;
+revoke all on function public.admin_update_project_status(uuid,text) from public, anon;
 grant execute on function public.is_hackarena_admin() to authenticated;
 grant execute on function public.admin_update_project_status(uuid,text) to authenticated;
 
