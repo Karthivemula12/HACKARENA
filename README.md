@@ -1,2 +1,2 @@
 # HACKARENA
-This is game For playing😛🥱`
+This game is for playing😛🥱`
